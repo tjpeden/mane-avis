@@ -28,7 +28,7 @@ void AlarmManager::write(int index, uint8_t value) {
   if(EEPROM.read(index) != value) EEPROM.write(index, value);
 }
 
-int AlarmManager::valueFor(Element element) {
+int AlarmManager::valueFor(int element) {
   switch(element) {
     case MINUTE : return Time.minute();
     case HOUR   : return Time.hour();
