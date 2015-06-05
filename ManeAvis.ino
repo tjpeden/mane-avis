@@ -29,6 +29,8 @@ unsigned long previousMillis;
 uint8_t previousMinute;
 
 void setup() {
+  pinMode(D7, OUTPUT);
+
   Serial.begin(9600);
 
   Display.begin(SSD1306_SWITCHCAPVCC);
@@ -90,7 +92,6 @@ void updateClock() {
     Display.print(second % 2 == 0 ? ' ' : ':');
     if(minute < 10) Display.print('0');
     Display.print(minute);
-    /*Display.print(' ');*/
 
     Display.setTextSize(1);
 
@@ -113,6 +114,7 @@ void updateAlarm() {
   unsigned long currentMillis = millis();
 
   if(currentMillis - stateMillis >= ALARM_LENGTH) {
+    digitalWrite(D7, LOW);
     stateMachine.transitionTo(Clock);
     return;
   }
@@ -125,6 +127,8 @@ void updateAlarm() {
     Display.setCursor(0, 22);
 
     if(Time.second() % 2 == 0) Display.print(" Alarm");
+
+    digitalWrite(D7, Time.second() % 2 == 0);
 
     Display.display();
   }
