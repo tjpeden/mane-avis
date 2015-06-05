@@ -9,6 +9,8 @@
 #define RECORD_DELIMITER 0x00
 
 class AlarmManager : public Printable {
+  const size_t maxLength = EEPROM.length();
+
   enum {
     MINUTE,
     HOUR,

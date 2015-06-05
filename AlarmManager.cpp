@@ -101,7 +101,7 @@ bool AlarmManager::load() {
   }
 
   int index = 1;
-  for(int index = 1; index < EEPROM.length(); i++) {
+  for(int index = 1; index < maxLength; index++) {
     char c = read(index);
     switch(c) {
       case RECORD_DELIMITER:
@@ -158,7 +158,7 @@ bool AlarmManager::check() {
 }
 
 bool AlarmManager::add(String value) {
-  if(length() + value.length() + 1 > EEPROM.length()) return false;
+  if(length() + value.length() + 1 > maxLength) return false;
 
   for(int i = 0; i < alarms->size(); i++) {
     String alarm = alarms->get(i);
@@ -221,23 +221,18 @@ size_t AlarmManager::length() const {
 
 size_t AlarmManager::printTo(Print& p) const {
   size_t result = 0;
-  size_t total = length();
   size_t count = alarms->size();
+  size_t total = length();
+  size_t available = maxLength - total;
 
-  result += p.print("Count: ");
-  result += p.println(count);
+  result += p.println("Count: " + String(count));
   for(int i = 0; i < count; i++) {
     String value = alarms->get(i);
-    result += p.print(i);
-    result += p.print(": ");
-    result += p.print(value);
-    result += p.print(" => ");
-    result += p.println(value.length());
+
+    result += p.println(String(i) + ": " + value + " => " + String(value.length()));
   }
-  result += p.print("Total: ");
-  result += p.println(total);
-  result += p.print("Available: ");
-  result += p.println(EEPROM.length() - total);
+  result += p.println("Total: " + String(total));
+  result += p.println("Available: " + String(available));
 
   return result;
 }

@@ -21,10 +21,10 @@ Adafruit_SSD1306 Display(OLED_DC, OLED_RESET, OLED_CS);
 AlarmManager alarms = AlarmManager();
 
 #define STARTUP_LENGTH 10000
+#define INTERVAL 100
 
 unsigned long stateMillis;
 unsigned long previousMillis;
-unsigned long interval = 100;
 
 uint8_t previousMinute;
 
@@ -75,7 +75,7 @@ void updateClock() {
     }
   }
 
-  if(currentMillis - previousMillis > interval) {
+  if(currentMillis - previousMillis > INTERVAL) {
     previousMillis = currentMillis;
     int hour   = Time.hourFormat12();
     int minute = Time.minute();
@@ -110,7 +110,7 @@ void updateAlarm() {
     return;
   }
 
-  if(currentMillis - previousMillis > interval) {
+  if(currentMillis - previousMillis > INTERVAL) {
     previousMillis = currentMillis;
 
     Display.clearDisplay();
