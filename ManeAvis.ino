@@ -83,16 +83,23 @@ void updateClock() {
 
     Display.clearDisplay();
     Display.setTextSize(3);
-    Display.setCursor(0, 22);
+    Display.setCursor(12, 22);
 
     if(hour < 10) Display.print(' ');
     Display.print(hour);
     Display.print(second % 2 == 0 ? ' ' : ':');
     if(minute < 10) Display.print('0');
     Display.print(minute);
-    Display.print(' ');
-    if(Time.isAM()) Display.print('A');
-    if(Time.isPM()) Display.print('P');
+    /*Display.print(' ');*/
+
+    Display.setTextSize(1);
+
+    if(Time.isAM()) {
+      Display.print("AM");
+    } else {
+      Display.setCursor(102, 37);
+      Display.print("PM");
+    }
 
     Display.display();
   }
