@@ -5,6 +5,9 @@
 
 #include "LinkedList.h"
 
+#define TABLE_DELIMITER 0xFF
+#define RECORD_DELIMITER 0x00
+
 class AlarmManager : public Printable {
   enum {
     MINUTE,

@@ -94,50 +94,50 @@ bool AlarmManager::matchElement(String value, int element) {
 bool AlarmManager::load() {
   String value = String();
 
-  if(read(0) != 255) {
-    write(0, 255);
-    write(1, 255);
+  if(read(0) != TABLE_DELIMITER) {
+    write(0, TABLE_DELIMITER);
+    write(1, TABLE_DELIMITER);
     return true;
   }
 
   int index = 1;
-  while(true) {
-    if(index > EEPROM.length()) return false;
-
+  for(int index = 1; index < EEPROM.length(); i++) {
     char c = read(index);
     switch(c) {
-    case 0:
-      if(value.length() > 0) alarms->add(value);
-      value = String();
+      case RECORD_DELIMITER:
+        if(value.length() > 0) alarms->add(value);
+        value = String();
 
-      break;
-    case 255:
-      if(value.length() > 0) alarms->add(value);
+        break;
+      case TABLE_DELIMITER:
+        if(value.length() > 0) alarms->add(value);
 
-      return true;
-    default:
-      value += c;
-      break;
+        return true;
+      default:
+        value += c;
+
+        break;
     }
-    index++;
   }
+
+  return false;
 }
 
 void AlarmManager::save() {
-  write(0, 255);
+  write(0, TABLE_DELIMITER);
 
   int index = 0;
   for(int i = 0; i < alarms->size(); i++) {
     String value = alarms->get(i);
 
-    if(i != 0) write(++index, 0);
+    if(i != 0) write(++index, RECORD_DELIMITER);
 
     for(int j = 0; j < value.length(); j++) {
       write(++index, value[j]);
     }
   }
 
-  write(++index, 255);
+  write(++index, TABLE_DELIMITER);
 }
 
 bool AlarmManager::check() {
