@@ -29,15 +29,15 @@ unsigned long previousMillis;
 uint8_t previousMinute;
 
 void setup() {
-  pinMode(D7, OUTPUT);
-
-  Serial.begin(9600);
-
   Display.begin(SSD1306_SWITCHCAPVCC);
 
   Spark.function("add", add);
   Spark.function("remove", remove);
   Spark.function("clear", clear);
+
+  RGB.control(true);
+  RGB.color(0, 255, 255);
+  RGB.brightness(0);
 
   Display.display();
   Display.setTextColor(WHITE);
@@ -45,7 +45,6 @@ void setup() {
   Time.zone(-5);
 
   alarms.load();
-  Serial.print(alarms);
 }
 
 void loop() {
@@ -70,6 +69,8 @@ void updateClock() {
 
   if(currentMinute != previousMinute) {
     previousMinute = currentMinute;
+
+    /*if(currentMinute == 1 && Time.hour() == 0) Spark.syncTime();*/
 
     if(alarms.check()) {
       stateMachine.transitionTo(Alarm);
@@ -114,7 +115,7 @@ void updateAlarm() {
   unsigned long currentMillis = millis();
 
   if(currentMillis - stateMillis >= ALARM_LENGTH) {
-    digitalWrite(D7, LOW);
+    RGB.brightness(0);
     stateMachine.transitionTo(Clock);
     return;
   }
@@ -128,7 +129,7 @@ void updateAlarm() {
 
     if(Time.second() % 2 == 0) Display.print(" Alarm");
 
-    digitalWrite(D7, Time.second() % 2 == 0);
+    RGB.brightness(Time.second() % 2 * 255);
 
     Display.display();
   }
