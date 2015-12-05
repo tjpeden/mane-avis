@@ -63,6 +63,7 @@ uint16_t speakerPin = D0;
 
 /*AlarmToneLanguage *parser;*/
 
+int rssi = 0;
 uint32_t freeMemory = 0;
 
 uint8_t previousMinute;
@@ -77,6 +78,8 @@ void setup() {
   #endif
 
   Particle.variable("freeMemory", freeMemory);
+  Particle.variable("rssi", rssi);
+  
   Particle.function("alarm", handleAlarm);
 
   #if defined COLOR_SCREEN
@@ -188,6 +191,7 @@ void render() {
 }
 
 void sync() {
+  rssi = WiFi.RSSI();
   freeMemory = System.freeMemory();
 
   if(Time.hour() == 0 && Time.minute() == 0) Particle.syncTime();
