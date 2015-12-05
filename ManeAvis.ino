@@ -123,6 +123,8 @@ void enterAlarm() {
   alarmRuntime.start();
   RGB.color(0, 0, 255);
 
+  Particle.publish("alarm:start", Time.format(Time.now(), TIME_FORMAT_ISO8601_FULL));
+
   /*parser = new AlarmToneLanguage(song);*/
   /*player.reset();*/
 }
@@ -142,6 +144,8 @@ void exitAlarm() {
 
   RGB.color(0, 0, 0);
   RGB.brightness(0);
+
+  Particle.publish("alarm:end", Time.format(Time.now(), TIME_FORMAT_ISO8601_FULL));
 
   /*delete parser;*/
 }
@@ -198,10 +202,21 @@ void sync() {
 }*/
 
 int handleAlarm(String value) {
+  bool result = false;
   switch(value.charAt(0)) {
-    case '+': return alarms.add(value.substring(1)) ? 1 : -1;
-    case '-': return alarms.remove(value.substring(1)) ? 1 : -1;
-    case '#': return alarms.clear() ? 1 : -1;
-    default:  return -1;
+    case '+':
+      result = alarms.add(value.substring(1));
+      Particle.publish("alarm:add", value.substring(1));
+      break;
+    case '-':
+      result = alarms.remove(value.substring(1));
+      Particle.publish("alarm:remove", value.substring(1));
+      break;
+    case '#':
+      result = alarms.clear();
+      Particle.publish("alarm:clear");
+      break;
   }
+
+  return result ? 1 : -1;
 }
