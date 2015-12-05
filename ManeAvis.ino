@@ -50,12 +50,12 @@ AlarmManager alarms = AlarmManager();
 
 /*Thread renderer;*/
 
-/*Timer Player(1, play);      // Play alarm tones 100x per second*/
-Timer Renderer(100, render); // Render 10x per second
-Timer Syncer(60000, sync);   // Sync cloud data once per minute
+/*Timer player(1, play);      // Play alarm tones 100x per second*/
+Timer renderer(100, render); // Render 10x per second
+Timer syncer(60000, sync);   // Sync cloud data once per minute
 
-Runtime AlarmRuntime = Runtime();
-/*Runtime PlayerRuntime = Runtime();*/
+Runtime alarmRuntime = Runtime();
+/*Runtime playerRuntime = Runtime();*/
 
 uint16_t speakerPin = D0;
 
@@ -79,7 +79,6 @@ void setup() {
   Particle.variable("freeMemory", freeMemory);
   Particle.function("alarm", handleAlarm);
 
-  /*Display.setFont(COMICS_8);*/
   #if defined COLOR_SCREEN
   Display.fillScreen(BLACK);
   #else
@@ -103,8 +102,8 @@ void updateStart() {
 }
 
 void exitStart() {
-  Renderer.start();
-  Syncer.start();
+  renderer.start();
+  syncer.start();
 }
 
 void updateClock() {
@@ -121,24 +120,24 @@ void updateClock() {
 }
 
 void enterAlarm() {
-  AlarmRuntime.start();
+  alarmRuntime.start();
   RGB.color(0, 0, 255);
 
   /*parser = new AlarmToneLanguage(song);*/
-  /*Player.reset();*/
+  /*player.reset();*/
 }
 
 void updateAlarm() {
   RGB.brightness(map(abs((millis() % 2000) - 1000), 0, 1000, 0, 255));
 
   // TODO: Remove when snooze/terminate functionality is implemented
-  if(AlarmRuntime.check(ALARM_LENGTH)) {
+  if(alarmRuntime.check(ALARM_LENGTH)) {
     stateMachine.transitionTo(Clock);
   }
 }
 
 void exitAlarm() {
-  /*Player.stop();*/
+  /*player.stop();*/
   noTone(speakerPin);
 
   RGB.color(0, 0, 0);
@@ -191,7 +190,7 @@ void sync() {
 }
 
 /*void play() {
-  if(PlayerRuntime.check(parser->getDuration())) {
+  if(playerRuntime.check(parser->getDuration())) {
     if(parser->next()) {
       parser->isRest() ? noTone(speakerPin) : tone(speakerPin, parser->getNote(), parser->getDuration());
     }
