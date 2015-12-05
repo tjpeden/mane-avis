@@ -1,5 +1,5 @@
 # mane-avis
-Photon base alarm clock using the Adafruit 128x64 SSD1306 OLED display
+Photon base alarm clock using the Adafruit 128x128 SSD1351 OLED display
 
 ## Roadmap
 
