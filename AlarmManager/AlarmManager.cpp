@@ -56,7 +56,7 @@ bool AlarmManager::matchElement(String value, int element) {
     String part = valueStream.readStringUntil(',');
 
     while(part != "") {
-      if(part.toInt() == current) return true;
+      if(matchElement(part, element)) return true;
       part = valueStream.readStringUntil(',');
     }
 
@@ -88,7 +88,7 @@ bool AlarmManager::matchElement(String value, int element) {
     return false;
   }
 
-  return value.toInt() == current;
+  return constrain(value.toInt(), ranges[(int)element][0], ranges[(int)element][1]) == current;
 }
 
 bool AlarmManager::load() {
