@@ -70,10 +70,11 @@ String song = "SMB Theme:d=4,o=5,b=80:16e6,16e6,32p,8e6,16c6,8e6,8g6,8p,8g,8p,8c
 
 AlarmToneLanguage *parser;
 
-int rssi = 0;
+int32_t rssi = 0;
 uint32_t freeMemory = 0;
 uint32_t frameTime = 0;
-uint32_t loopTime = 0;
+
+uint32_t clicks = 0;
 
 uint8_t previousMinute;
 
@@ -97,7 +98,6 @@ void setup() {
   Display.display();
   #endif
 
-  Particle.variable("loopTime", loopTime);
   Particle.variable("frameTime", frameTime);
   Particle.variable("freeMemory", freeMemory);
   Particle.variable("rssi", rssi);
@@ -106,19 +106,14 @@ void setup() {
 }
 
 void loop() {
-  uint32_t start = millis();
-
   if(!Particle.connected()) {
     Particle.connect();
   }
 
-  if(stateMachine.isInState(Alarm) || stateMachine.isInState(Snuze)) {
-    button.Update();
-  }
+  button.Update();
+  clicks = button.clicks;
 
   stateMachine.update();
-
-  loopTime = millis() - start;
 }
 
 void enterStart() {
@@ -158,8 +153,6 @@ void updateClock() {
 void enterAlarm() {
   Particle.publish("alarm:start", Time.format(Time.now(), TIME_FORMAT_ISO8601_FULL));
 
-  /*alarmRuntime.start();*/
-
   RGB.color(0, 0, 255);
 
   parser = new AlarmToneLanguage(song);
@@ -169,9 +162,7 @@ void enterAlarm() {
 void updateAlarm() {
   RGB.brightness(map(abs((millis() % 2000) - 1000), 0, 1000, 0, 255));
 
-  uint8_t clicks = button.clicks;
-
-  switch(button.clicks) {
+  switch(clicks) {
     case -1:
       stateMachine.transitionTo(Clock);
       return;
@@ -179,11 +170,6 @@ void updateAlarm() {
       stateMachine.transitionTo(Snuze);
       return;
   }
-
-  // TODO: Remove when snooze/dismiss functionality is implemented
-  /*if(alarmRuntime.check(ALARM_LENGTH)) {
-    stateMachine.transitionTo(Clock);
-  }*/
 }
 
 void exitAlarm() {
@@ -204,7 +190,7 @@ void enterSnuze() {
 }
 
 void updateSnuze() {
-  if(button.clicks == -1) {
+  if(clicks == -1) {
     stateMachine.transitionTo(Clock);
     return;
   }
