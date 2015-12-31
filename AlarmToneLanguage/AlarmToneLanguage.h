@@ -34,6 +34,7 @@ public:
   AlarmToneLanguage(const String&);
   ~AlarmToneLanguage();
 
+  void initialize();
   void rewind();
   bool next();
   bool isRest() const;

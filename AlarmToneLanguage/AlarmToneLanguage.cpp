@@ -5,23 +5,53 @@
 AlarmToneLanguage::AlarmToneLanguage(const String &value) : StringStream(value) {
   duration = 0;
 
-  name = readStringUntil(':');
-
-  default_duration = find("d") ? parseInt() : 4;
-  default_octave   = find("o") ? parseInt() : 4;
-  uint16_t bpm     = find("b") ? parseInt() : 63;
-
-  wholenote = (60 * 1000 / (float)bpm) * 4;
-
-  find(":"); // queue up to first note
-
-  first_note = position;
+  default_duration = 4;
+  default_octave   = 4;
 }
 
 AlarmToneLanguage::~AlarmToneLanguage() {}
 
+void AlarmToneLanguage::initialize() {
+  uint16_t bpm = 63;
+  String config;
+
+  name   = readStringUntil(':');
+  config = readStringUntil(':');
+
+  uint8_t index;
+  while(config.length() > 0) {
+    String option;
+
+    index = config.indexOf(',');
+
+    if(index >= 0) {
+      option = config.substring(0, index);
+      config = config.substring(index + 1);
+    } else {
+      option = String(config);
+      config = String();
+    }
+
+    switch(option.charAt(0)) {
+      case 'd':
+        default_duration = option.substring(2).toInt();
+        break;
+      case 'o':
+        default_octave   = option.substring(2).toInt();
+        break;
+      case 'b':
+        bpm              = option.substring(2).toInt();
+    }
+  }
+
+  wholenote = (60 * 1000 / (float)bpm) * 4;
+
+  first_note = position;
+}
+
 void AlarmToneLanguage::rewind() {
   position = first_note;
+  duration = 100;
 }
 
 bool AlarmToneLanguage::next() {
