@@ -1,32 +1,28 @@
 #define MANE_AVIS_VERSION "0.0.1"
-#define COLOR_SCREEN
 
 #include <math.h>
 
-#if defined COLOR_SCREEN
 #include "Adafruit_SSD1351.h"
-#else
-#include "Adafruit_SSD1306.h"
-#endif
 
 #include "FiniteStateMachine.h"
 #include "AlarmToneLanguage.h"
 #include "AlarmManager.h"
 #include "ClickButton.h"
 #include "Runtime.h"
+#include "SdFat.h"
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 SYSTEM_THREAD(ENABLED);
 
 // use hardware SPI
-#define OLED_DC     D3
-#define OLED_CS     D4
-#define OLED_RESET  D5
+#define SD_CS       A2
+#define OLED_CS     A1
+#define OLED_DC     D2
+#define OLED_RESET  D3
 
 #define SPEAKER     D0
 #define BUTTON      D1
 
-#if defined COLOR_SCREEN
 // Color definitions
 #define	BLACK           0x0000
 #define	BLUE            0x001F
@@ -37,36 +33,38 @@ SYSTEM_THREAD(ENABLED);
 #define YELLOW          0xFFE0
 #define WHITE           0xFFFF
 
-Adafruit_SSD1351 Display(OLED_CS, OLED_DC, OLED_RESET);
-#else
-Adafruit_SSD1306 Display(OLED_DC, OLED_RESET, OLED_CS);
-#endif
+#define SNUZE_THRESHOLD 10 * 60 * 1000 // 10 minutes TODO: make this configurable
 
-#define ALARM_LENGTH      30 * 1000 // 30 seconds
-#define SNUZE_LENGTH 10 * 60 * 1000 // 10 minutes TODO: make this configurable
+#define STORE "alarms.txt"
+
+STARTUP(Serial.begin(115200));
+
+Adafruit_SSD1351 Display(OLED_CS, OLED_DC, OLED_RESET);
 
 AlarmManager alarms = AlarmManager();
 
 State Start = State(enterStart, updateStart, exitStart);
-State Clock = State(updateClock);
 State Alarm = State(enterAlarm, updateAlarm, exitAlarm);
 State Snuze = State(enterSnuze, updateSnuze, exitSnuze); // Snooze is too many letters, broke my trend
+State Error = State(enterError, updateError, NO_EXIT);
+State Clock = State(updateClock);
 
-FSM stateMachine = FSM(Start);
+FSM self = FSM(Start);
 
 ClickButton button(BUTTON, HIGH);
 
-/*Thread renderer;*/
-
 Timer player(1, play);       // Play alarm tone
 Timer renderer(200, render); // Render screen
-Timer syncer(1000, sync);   // Update Particle Cloud variables
+Timer syncer(500, sync);   // Update Particle Cloud variables
 
-/*Runtime alarmRuntime  = Runtime();*/
-Runtime snuzeRuntime  = Runtime();
+Runtime snuzeRuntime  = Runtime(SNUZE_THRESHOLD);
 Runtime playerRuntime = Runtime();
 
+String errorMessage;
 String song = "SMB Theme:d=4,o=5,b=80:16e6,16e6,32p,8e6,16c6,8e6,8g6,8p,8g,8p,8c6,16p,8g,16p,8e,16p,8a,8b,16a#,8a,16g.,16e6,16g6,8a6,16f6,8g6,8e6,16c6,16d6,8b,16p,8c6,16p,8g,16p,8e,16p,8a,8b,16a#,8a,16g.,16e6,16g6,8a6,16f6,8g6,8e6,16c6,16d6,8b,8p,16g6,16f#6,16f6,16d#6,16p,16e6,16p,16g#,16a,16c6,16p,16a,16c6,16d6,8p,16g6,16f#6,16f6,16d#6,16p,16e6,16p,16c7,16p,16c7,16c7,p,16g6,16f#6,16f6,16d#6,16p,16e6,16p,16g#,16a,16c6,16p,16a,16c6,16d6,8p,16d#6,8p,16d6,8p,16c6";
+
+SdFat sd;
+File store;
 
 AlarmToneLanguage *parser;
 
@@ -78,6 +76,8 @@ uint32_t clicks = 0;
 
 uint8_t previousMinute;
 
+volatile bool clear = true;
+
 void setup() {
   pinMode(SPEAKER, OUTPUT);
   pinMode(BUTTON, INPUT);
@@ -86,21 +86,18 @@ void setup() {
   button.multiclickTime = 20; // Only allow 1 click
   button.longClickTime  = 2000;
 
-  #if defined COLOR_SCREEN
   Display.begin();
-  #else
-  Display.begin(SSD1306_SWITCHCAPVCC);
-  #endif
-
-  #if defined COLOR_SCREEN
   Display.fillScreen(BLACK);
-  #else
-  Display.display();
-  #endif
 
   Particle.variable("frameTime", frameTime);
   Particle.variable("freeMemory", freeMemory);
   Particle.variable("rssi", rssi);
+
+  if(false == sd.begin(SD_CS, SPI_HALF_SPEED)) {
+    error("Failed to start SD");
+    return;
+  }
+  SdFile::dateTimeCallback(dateTime);
 
   Particle.function("alarm", handleAlarm);
 }
@@ -113,26 +110,56 @@ void loop() {
   button.Update();
   clicks = button.clicks;
 
-  stateMachine.update();
+  self.update();
 }
 
 void enterStart() {
-  Time.zone(-6); // TODO: EEPROM/flash and configure
+  // Read configuration from Flash
+  Time.zone(-6); // TODO: store in Flash and add configuration
+
+  // Print version info
+  Serial.print("Mane Avis v");
+  Serial.println(MANE_AVIS_VERSION);
+  Serial.print("Firmware: ");
+  Serial.println(System.version());
 
   // Display splash screen
+  Display.print("Mane Avis v");
+  Display.println(MANE_AVIS_VERSION);
+  Display.print("Firmware: ");
+  Display.println(System.version());
+  // TODO: display a real splash screen
 
-  alarms.load();
+  // Read alarms from SD card
+  if(sd.exists(STORE)) {
+    if(!store.open(STORE, O_READ)) {
+      error("Failed to open store");
+      return;
+    }
+
+    String line;
+    while((line = store.readStringUntil('\r')) != NULL) {
+      alarms.add(line);
+      store.read(); // clear '\n'
+    }
+  }
+
+  store.close();
 }
 
 void updateStart() {
-  if(Time.now() > 10000) { // time sync check per @bko
-    stateMachine.transitionTo(Clock);
+  if(10000 < Time.now()) { // time sync check per @bko
+    self.transitionTo(Clock);
+
+    return;
   }
 }
 
 void exitStart() {
   renderer.start();
   syncer.start();
+
+  clear = true;
 
   RGB.control(true);
 }
@@ -144,18 +171,22 @@ void updateClock() {
     previousMinute = currentMinute;
 
     if(alarms.check()) {
-      stateMachine.transitionTo(Alarm);
+      self.transitionTo(Alarm);
+
       return;
     }
   }
 }
 
 void enterAlarm() {
-  Particle.publish("alarm:start", Time.format(Time.now(), TIME_FORMAT_ISO8601_FULL));
+  Particle.publish("alarm:start");
 
   RGB.color(0, 0, 255);
+  RGB.brightness(255);
 
   parser = new AlarmToneLanguage(song);
+  parser->initialize();
+
   player.reset();
 }
 
@@ -164,10 +195,12 @@ void updateAlarm() {
 
   switch(clicks) {
     case -1:
-      stateMachine.transitionTo(Clock);
+      self.transitionTo(Clock);
+
       return;
     case 1:
-      stateMachine.transitionTo(Snuze);
+      self.transitionTo(Snuze);
+
       return;
   }
 }
@@ -181,7 +214,7 @@ void exitAlarm() {
 
   delete parser;
 
-  Particle.publish("alarm:end", Time.format(Time.now(), TIME_FORMAT_ISO8601_FULL));
+  Particle.publish("alarm:end");
 }
 
 void enterSnuze() {
@@ -190,13 +223,15 @@ void enterSnuze() {
 }
 
 void updateSnuze() {
-  if(clicks == -1) {
-    stateMachine.transitionTo(Clock);
+  if(-1 == clicks) {
+    self.transitionTo(Clock);
+
     return;
   }
+  if(snuzeRuntime.check()) {
+    self.transitionTo(Alarm);
 
-  if(snuzeRuntime.check(SNUZE_LENGTH)) {
-    stateMachine.transitionTo(Alarm);
+    return;
   }
 }
 
@@ -204,85 +239,119 @@ void exitSnuze() {
   Particle.publish("snooze:end");
 }
 
+void enterError() {
+  Particle.publish("error", errorMessage);
+  clear = true;
+}
+
+void updateError() {
+  if(-1 == clicks) {
+    self.transitionTo(Clock);
+  }
+}
+
+void exitError() {
+  clear = true;
+}
+
 void render() {
   uint32_t start = millis();
 
-  time_t time = Time.now();
-  bool isAM   = Time.isAM();
-  static bool wasAM = false;
+  if(clear) {
+    clear = false;
+    Display.fillScreen(BLACK);
+  }
 
-  #if !defined COLOR_SCREEN
-  Display.clearDisplay();
-  #endif
+  if(true == self.isInState(Error)) {
+    renderError();
+  } else {
+    renderClock();
+  }
 
-  #if defined COLOR_SCREEN
+  renderStatus();
+
+  frameTime = millis() - start;
+}
+
+void renderStatus() {
+  /***** RSSI Indicator *****/
   drawIcon(1, 1, 12, abs(WiFi.RSSI()), YELLOW, WHITE);
 
-  Display.setTextSize(1);
   Display.setTextColor(YELLOW, BLACK);
+
+  /***** SSID *****/
+  Display.setTextSize(1);
   Display.setCursor(18, 6);
 
   Display.print(WiFi.SSID());
-  #endif
 
-  Display.setTextSize(3);
+  /***** Snooze Indicator *****/
+  Display.setCursor(120, 6);
 
-  #if defined COLOR_SCREEN
-  Display.setTextColor(BLUE, BLACK);
-  Display.setCursor(12, 55);
-  #else
-  Display.setTextColor(WHITE);
-  Display.setCursor(12, 22);
-  #endif
-
-  Display.print(Time.format(time, Time.second() % 2 == 0 ? "%l:%M" : "%l %M"));
-
-  #if defined COLOR_SCREEN
-  if(isAM != wasAM) {
-    wasAM = isAM;
+  if(true == self.isInState(Snuze)) {
+    Display.print('Z');
+  } else {
     Display.print(' ');
   }
-  #else
-  Display.print(' ');
-  #endif
+}
 
-  if(isAM) {
-    #if defined COLOR_SCREEN
-    Display.setCursor(102, 70);
-    #else
-    Display.setCursor(102, 37);
-    #endif
-  } else {
-    #if defined COLOR_SCREEN
-    Display.setCursor(102, 55);
-    #else
-    Display.setCursor(102, 22);
-    #endif
+void renderClock() {
+  static bool wasAM = !Time.isAM();
+
+  bool isAM = Time.isAM();
+
+  Display.setTextColor(BLUE, BLACK);
+
+  /***** Time *****/
+  Display.setTextSize(3);
+  Display.setCursor(12, 55);
+
+  Display.print(Time.format(Time.second() % 2 == 0 ? "%l:%M" : "%l %M"));
+
+  /***** Merdiem *****/
+  if(isAM != wasAM) {
+    wasAM = isAM;
+
+    Display.print(' ');
   }
 
   Display.setTextSize(1);
-  Display.print(Time.format(time, "%p"));
+  if(true == isAM) {
+    Display.setCursor(102, 70);
+  } else {
+    Display.setCursor(102, 55);
+  }
 
-  #if defined COLOR_SCREEN
+  Display.print(Time.format("%p"));
+
+  /***** Date *****/
+  Display.setTextSize(1);
   Display.setCursor(34, 80);
-  #else
-  Display.setCursor(34, 42);
-  #endif
 
-  Display.print(Time.format(time, "%F"));
+  Display.print(Time.format("%F"));
+}
 
-  #if !defined COLOR_SCREEN
-  Display.display();
-  #endif
+void renderError() {
+  Display.setTextColor(RED, BLACK);
 
-  frameTime = millis() - start;
+  /***** Error Message *****/
+  Display.setTextSize(1);
+  Display.setCursor(1, 55);
+
+  Display.println(errorMessage);
+
+  if(self.isInState(Start)) {
+    sd.initErrorPrint(&Display);
+  } else {
+    sd.errorPrint(&Display);
+  }
 }
 
 void sync() {
   rssi = WiFi.RSSI();
   freeMemory = System.freeMemory();
 
-  if(Time.hour() == 0 && Time.minute() == 0) Particle.syncTime();
+  if(0 == Time.hour() && 0 == Time.minute()) Particle.syncTime();
 }
 
 void play() {
@@ -297,6 +366,9 @@ void play() {
 
 int handleAlarm(String value) {
   bool result = false;
+
+  renderer.stop(); // Don't want to read
+
   switch(value.charAt(0)) {
     case '+':
       result = alarms.add(value.substring(1));
@@ -310,7 +382,26 @@ int handleAlarm(String value) {
       result = alarms.clear();
       Particle.publish("alarm:clear");
       break;
+    case '?':
+      if(Serial) Serial.println(alarms);
+    default: result = false;
   }
+
+  if(true == result) {
+    store.open(STORE, O_WRITE | O_CREAT | O_TRUNC);
+    if(!store) {
+      error("Failed to update store");
+      renderer.start();
+
+      return -1;
+    }
+    store.print(alarms);
+    store.close();
+
+    delay(50);
+  }
+
+  renderer.start();
 
   return result ? 1 : -1;
 }
@@ -326,4 +417,25 @@ void drawIcon(uint16_t x, uint16_t y, uint16_t size, uint16_t signalStrength, ui
     uint16_t radius = i * gap;
     Display.drawLine(x + radius, y, x + radius, y - (i + 1) * gap, signalStrength > i * unit ? color : dimColor);
   }
+}
+
+void error(String message) {
+  errorMessage = message;
+  if(Serial) {
+    Serial.println(errorMessage);
+    if(self.isInState(Start)) {
+      sd.initErrorPrint();
+    } else {
+      sd.errorPrint();
+    }
+  }
+  self.transitionTo(Error);
+}
+
+void dateTime(uint16_t* date, uint16_t* time) {
+  // return date using FAT_DATE macro to format fields
+  *date = FAT_DATE(Time.year(), Time.month(), Time.day());
+
+  // return time using FAT_TIME macro to format fields
+  *time = FAT_TIME(Time.hour(), Time.minute(), Time.second());
 }
