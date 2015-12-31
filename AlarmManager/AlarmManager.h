@@ -5,12 +5,7 @@
 
 #include "LinkedList.h"
 
-#define TABLE_DELIMITER 0xFF
-#define RECORD_DELIMITER 0x00
-
 class AlarmManager : public Printable {
-  const size_t maxLength = EEPROM.length();
-
   enum {
     MINUTE,
     HOUR,
@@ -33,16 +28,11 @@ public:
   AlarmManager();
   ~AlarmManager();
 
-  bool load();
-  void save();
-
   bool check();
 
   bool add(String);
   bool remove(String);
   bool clear();
-
-  size_t length() const;
 
   virtual size_t printTo(Print&) const;
 };

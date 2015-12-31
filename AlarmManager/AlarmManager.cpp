@@ -20,14 +20,6 @@ AlarmManager::~AlarmManager() {
   delete alarms;
 }
 
-uint8_t AlarmManager::read(int index) {
-  return EEPROM.read(index);
-}
-
-void AlarmManager::write(int index, uint8_t value) {
-  if(EEPROM.read(index) != value) EEPROM.write(index, value);
-}
-
 int AlarmManager::valueFor(int element) {
   switch(element) {
     case MINUTE : return Time.minute();
@@ -91,55 +83,6 @@ bool AlarmManager::matchElement(String value, int element) {
   return constrain(value.toInt(), ranges[(int)element][0], ranges[(int)element][1]) == current;
 }
 
-bool AlarmManager::load() {
-  String value = String();
-
-  if(read(0) != TABLE_DELIMITER) {
-    write(0, TABLE_DELIMITER);
-    write(1, TABLE_DELIMITER);
-    return true;
-  }
-
-  int index = 1;
-  for(int index = 1; index < maxLength; index++) {
-    char c = read(index);
-    switch(c) {
-      case RECORD_DELIMITER:
-        if(value.length() > 0) alarms->add(value);
-        value = String();
-
-        break;
-      case TABLE_DELIMITER:
-        if(value.length() > 0) alarms->add(value);
-
-        return true;
-      default:
-        value += c;
-
-        break;
-    }
-  }
-
-  return false;
-}
-
-void AlarmManager::save() {
-  write(0, TABLE_DELIMITER);
-
-  int index = 0;
-  for(int i = 0; i < alarms->size(); i++) {
-    String value = alarms->get(i);
-
-    if(i != 0) write(++index, RECORD_DELIMITER);
-
-    for(int j = 0; j < value.length(); j++) {
-      write(++index, value[j]);
-    }
-  }
-
-  write(++index, TABLE_DELIMITER);
-}
-
 bool AlarmManager::check() {
   for(int i = 0; i < alarms->size(); i++) {
     int element;
@@ -158,8 +101,6 @@ bool AlarmManager::check() {
 }
 
 bool AlarmManager::add(String value) {
-  if(length() + value.length() + 1 > maxLength) return false;
-
   for(int i = 0; i < alarms->size(); i++) {
     String alarm = alarms->get(i);
 
@@ -167,7 +108,6 @@ bool AlarmManager::add(String value) {
   }
 
   alarms->add(String(value));
-  save();
 
   return true;
 }
@@ -187,7 +127,6 @@ bool AlarmManager::remove(String value) {
 
   if(index >= 0) {
     alarms->remove(index);
-    save();
 
     return true;
   }
@@ -199,40 +138,18 @@ bool AlarmManager::clear() {
   if(alarms->size() == 0) return false;
 
   alarms->clear();
-  save();
 
   return true;
 }
 
-size_t AlarmManager::length() const {
-  int count = alarms->size();
-  size_t result = 2;
-
-  if(count > 0) result += count - 1;
-
-  for(int i = 0; i < count; i++) {
-    String value = alarms->get(i);
-
-    result += value.length();
-  }
-
-  return result;
-}
-
 size_t AlarmManager::printTo(Print& p) const {
   size_t result = 0;
-  size_t count = alarms->size();
-  size_t total = length();
-  size_t available = maxLength - total;
-
-  result += p.println("Count: " + String(count));
-  for(int i = 0; i < count; i++) {
+  
+  for(int i = 0; i < alarms->size(); i++) {
     String value = alarms->get(i);
 
-    result += p.println(String(i) + ": " + value + " => " + String(value.length()));
+    result += p.println(value);
   }
-  result += p.println("Total: " + String(total));
-  result += p.println("Available: " + String(available));
 
   return result;
 }
