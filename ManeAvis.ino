@@ -372,15 +372,15 @@ int handleAlarm(String value) {
   switch(value.charAt(0)) {
     case '+':
       result = alarms.add(value.substring(1));
-      Particle.publish("alarm:add", value.substring(1));
+      Particle.publish("alarms:add", value.substring(1));
       break;
     case '-':
       result = alarms.remove(value.substring(1));
-      Particle.publish("alarm:remove", value.substring(1));
+      Particle.publish("alarms:remove", value.substring(1));
       break;
     case '#':
       result = alarms.clear();
-      Particle.publish("alarm:clear");
+      Particle.publish("alarms:clear");
       break;
     case '?':
       if(Serial) Serial.println(alarms);
