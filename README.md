@@ -1,4 +1,4 @@
-# mane-avis
+# Mane Avis
 Photon-based _smart_ alarm clock
 
 ## Current BOM
