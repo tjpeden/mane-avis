@@ -13,8 +13,8 @@ Photon-based _smart_ alarm clock
 * [2.6" Serial: UART/I2C/SPI IPS Super TFT 320x240 with Touchscreen+16MB Flash Module][9] ($23.49)
 * [SparkFun RGB and Gesture Sensor - APDS-9960][8] ($14.95)
 * [Power Shield][2] ($25.00)
-* [Adafruit Mono 2.5W Class D Audio Amplifier - PAM8302][6]
-* [RedBear Duo – Wi-Fi + BLE IoT Board][10]
+* [Adafruit Mono 2.5W Class D Audio Amplifier - PAM8302][6] ($3.95)
+* [RedBear Duo – Wi-Fi + BLE IoT Board][10] ($27 Shipped -- Kickstarter)
 
 ### Notes
 * `2.6" Serial: UART/I2C/SPI IPS Super TFT 320x240 with Touchscreen+16MB Flash Module` replaces `OLED Breakout Board - 16-bit Color 1.5" w/microSD holder`
