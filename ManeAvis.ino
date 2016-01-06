@@ -4,12 +4,15 @@
 
 #include "Adafruit_SSD1351.h"
 
+#include "BlynkSimpleParticle.h"
 #include "FiniteStateMachine.h"
 #include "AlarmToneLanguage.h"
 #include "AlarmManager.h"
 #include "ClickButton.h"
 #include "Runtime.h"
 #include "SdFat.h"
+
+#include "config.h"
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 SYSTEM_THREAD(ENABLED);
@@ -37,8 +40,6 @@ SYSTEM_THREAD(ENABLED);
 
 #define STORE "alarms.txt"
 
-STARTUP(Serial.begin(115200));
-
 Adafruit_SSD1351 Display(OLED_CS, OLED_DC, OLED_RESET);
 
 AlarmManager alarms = AlarmManager();
@@ -55,7 +56,7 @@ ClickButton button(BUTTON, HIGH);
 
 Timer player(1, play);       // Play alarm tone
 Timer renderer(200, render); // Render screen
-Timer syncer(500, sync);   // Update Particle Cloud variables
+Timer syncer(1000, sync);   // Update Particle Cloud variables
 
 Runtime snuzeRuntime  = Runtime(SNUZE_THRESHOLD);
 Runtime playerRuntime = Runtime();
@@ -65,6 +66,8 @@ String song = "SMB Theme:d=4,o=5,b=80:16e6,16e6,32p,8e6,16c6,8e6,8g6,8p,8g,8p,8c
 
 SdFat sd;
 File store;
+
+WidgetTerminal terminal(V0);
 
 AlarmToneLanguage *parser;
 
@@ -82,16 +85,14 @@ void setup() {
   pinMode(SPEAKER, OUTPUT);
   pinMode(BUTTON, INPUT);
 
+  Blynk.begin(BLYNK_AUTH);
+
   button.debounceTime   = 20;
   button.multiclickTime = 20; // Only allow 1 click
   button.longClickTime  = 2000;
 
   Display.begin();
   Display.fillScreen(BLACK);
-
-  Particle.variable("frameTime", frameTime);
-  Particle.variable("freeMemory", freeMemory);
-  Particle.variable("rssi", rssi);
 
   if(false == sd.begin(SD_CS, SPI_HALF_SPEED)) {
     error("Failed to start SD");
@@ -111,17 +112,13 @@ void loop() {
   clicks = button.clicks;
 
   self.update();
+
+  Blynk.run();
 }
 
 void enterStart() {
   // Read configuration from Flash
   Time.zone(-6); // TODO: store in Flash and add configuration
-
-  // Print version info
-  Serial.print("Mane Avis v");
-  Serial.println(MANE_AVIS_VERSION);
-  Serial.print("Firmware: ");
-  Serial.println(System.version());
 
   // Display splash screen
   Display.print("Mane Avis v");
@@ -348,8 +345,9 @@ void renderError() {
 }
 
 void sync() {
-  rssi = WiFi.RSSI();
-  freeMemory = System.freeMemory();
+  Blynk.virtualWrite(1, abs(WiFi.RSSI()));
+  Blynk.virtualWrite(2, 1000/frameTime);
+  Blynk.virtualWrite(3, System.freeMemory()/1024);
 
   if(0 == Time.hour() && 0 == Time.minute()) Particle.syncTime();
 }
@@ -383,7 +381,8 @@ int handleAlarm(String value) {
       Particle.publish("alarms:clear");
       break;
     case '?':
-      if(Serial) Serial.println(alarms);
+      terminal.println(alarms);
+      terminal.flush();
     default: result = false;
   }
 
@@ -406,6 +405,30 @@ int handleAlarm(String value) {
   return result ? 1 : -1;
 }
 
+BLYNK_WRITE(V0) { // terminal
+  int result;
+  String value = param.asStr();
+
+  switch (value.charAt(0)) {
+    case '+':
+    case '-':
+    case '#':
+    case '?':
+      result = handleAlarm(value);
+      terminal.println("Result: " + String(result));
+      break;
+    default:
+      if(value == "version") {
+        terminal.print("Mane Avis v");
+        terminal.println(MANE_AVIS_VERSION);
+        terminal.print("Firmware: ");
+        terminal.println(System.version());
+      }
+  }
+
+  terminal.flush();
+}
+
 void drawIcon(uint16_t x, uint16_t y, uint16_t size, uint16_t signalStrength, uint16_t color, uint16_t dimColor) {
   uint16_t gap = size / 5;
   uint16_t unit = 127 / 5;
@@ -421,14 +444,12 @@ void drawIcon(uint16_t x, uint16_t y, uint16_t size, uint16_t signalStrength, ui
 
 void error(String message) {
   errorMessage = message;
-  if(Serial) {
-    Serial.println(errorMessage);
-    if(self.isInState(Start)) {
-      sd.initErrorPrint();
-    } else {
-      sd.errorPrint();
-    }
+  if(self.isInState(Start)) {
+    sd.initErrorPrint(&terminal);
+  } else {
+    sd.errorPrint(&terminal);
   }
+  terminal.flush();
   self.transitionTo(Error);
 }
 
