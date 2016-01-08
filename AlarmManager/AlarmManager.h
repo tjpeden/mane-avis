@@ -41,9 +41,6 @@ namespace Alarming {
   private:
     LinkedList<String> *alarms;
 
-    // uint8_t read(int);
-    // void write(int, uint8_t);
-
     bool matchElement(String, Element);
 
     static ValueForHandler valueFor;
