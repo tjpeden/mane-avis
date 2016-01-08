@@ -1,6 +1,18 @@
 #include "AlarmManager.h"
 
-#include "StringStream.h"
+void (*AlarmManager::valueFor)(AlarmManager::Element, uint16_t*) = 0;
+
+AlarmManager::Element& operator++(AlarmManager::Element& element) {
+  element = static_cast<AlarmManager::Element>(element + 1);
+
+  return element;
+}
+
+AlarmManager::Element& operator++(AlarmManager::Element& element, int) {
+  AlarmManager::Element result = element;
+  ++element;
+  return result;
+}
 
 int ranges[][2] = {
   {0, 59},     // Second
@@ -20,19 +32,7 @@ AlarmManager::~AlarmManager() {
   delete alarms;
 }
 
-int AlarmManager::valueFor(int element) {
-  switch(element) {
-    case MINUTE : return Time.minute();
-    case HOUR   : return Time.hour();
-    case DAY    : return Time.day();
-    case MONTH  : return Time.month();
-    case WEEKDAY: return Time.weekday();
-    case YEAR   : return Time.year();
-    default     : return -1;
-  }
-}
-
-bool AlarmManager::matchElement(String value, int element) {
+bool AlarmManager::matchElement(String value, AlarmManager::Element element) {
   if(value == "") {
     if(element == YEAR) return true;
     else return false;
@@ -41,7 +41,8 @@ bool AlarmManager::matchElement(String value, int element) {
 
   if((element == DAY || element == WEEKDAY) && value == "?") return true;
 
-  int current = valueFor(element);
+  uint16_t current;
+  valueFor(element, &current);
 
   if(value.indexOf(',') >= 0) {
     StringStream valueStream = StringStream(value);
@@ -56,12 +57,12 @@ bool AlarmManager::matchElement(String value, int element) {
   }
 
   if(value.indexOf('/') >= 0) {
-    int start    = value.substring(0, value.indexOf('/')).toInt();
-    int interval = value.substring(value.indexOf('/') + 1).toInt();
+    uint16_t start    = value.substring(0, value.indexOf('/')).toInt();
+    uint16_t interval = value.substring(value.indexOf('/') + 1).toInt();
 
     start = constrain(start, ranges[(int)element][0], ranges[(int)element][1]);
 
-    for(int i = 0; i <= ranges[(int)element][1]; i += interval) {
+    for(uint8_t i = 0; i <= ranges[(int)element][1]; i += interval) {
       if(i == current) return true;
     }
 
@@ -69,8 +70,8 @@ bool AlarmManager::matchElement(String value, int element) {
   }
 
   if(value.indexOf('-') >= 0) {
-    int start = value.substring(0, value.indexOf('-')).toInt();
-    int end   = value.substring(value.indexOf('-') + 1).toInt();
+    uint16_t start = value.substring(0, value.indexOf('-')).toInt();
+    uint16_t end   = value.substring(value.indexOf('-') + 1).toInt();
 
     start = constrain(start, ranges[(int)element][0], ranges[(int)element][1]);
     end   = constrain(end, ranges[(int)element][0], ranges[(int)element][1]);
@@ -84,8 +85,8 @@ bool AlarmManager::matchElement(String value, int element) {
 }
 
 bool AlarmManager::check() {
-  for(int i = 0; i < alarms->size(); i++) {
-    int element;
+  for(uint16_t i = 0; i < alarms->size(); i++) {
+    AlarmManager::Element element;
     StringStream alarm = StringStream(alarms->get(i));
 
     for(element = MINUTE; element != LAST; element++) {
@@ -101,7 +102,7 @@ bool AlarmManager::check() {
 }
 
 bool AlarmManager::add(String value) {
-  for(int i = 0; i < alarms->size(); i++) {
+  for(uint16_t i = 0; i < alarms->size(); i++) {
     String alarm = alarms->get(i);
 
     if(alarm == value) return false;
@@ -115,8 +116,8 @@ bool AlarmManager::add(String value) {
 bool AlarmManager::remove(String value) {
   if(alarms->size() == 0) return false;
 
-  int index = -1;
-  for(int i = 0; i < alarms->size(); i ++) {
+  uint16_t index = -1;
+  for(uint16_t i = 0; i < alarms->size(); i ++) {
     String alarm = alarms->get(i);
 
     if(alarm == value) {
@@ -144,11 +145,13 @@ bool AlarmManager::clear() {
 
 size_t AlarmManager::printTo(Print& p) const {
   size_t result = 0;
-  
-  for(int i = 0; i < alarms->size(); i++) {
-    String value = alarms->get(i);
 
-    result += p.println(value);
+  if(alarms->size() > 0) {
+    for(uint16_t i = 0; i < alarms->size(); i++) {
+      String value = alarms->get(i);
+
+      result += p.println(value);
+    }
   }
 
   return result;
