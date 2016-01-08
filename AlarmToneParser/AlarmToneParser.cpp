@@ -1,18 +1,18 @@
 #include <math.h>
 
-#include "AlarmToneLanguage.h"
+#include "AlarmToneParser.h"
 
 namespace Alarming {
-  AlarmToneLanguage::AlarmToneLanguage(const String &value) : StringStream(value) {
+  AlarmToneParser::AlarmToneParser(const String &value) : StringStream(value) {
     duration = 0;
 
     default_duration = 4;
     default_octave   = 4;
   }
 
-  AlarmToneLanguage::~AlarmToneLanguage() {}
+  AlarmToneParser::~AlarmToneParser() {}
 
-  void AlarmToneLanguage::initialize() {
+  void AlarmToneParser::initialize() {
     uint16_t bpm = 63;
     String config;
 
@@ -50,12 +50,12 @@ namespace Alarming {
     first_note = position;
   }
 
-  void AlarmToneLanguage::rewind() {
+  void AlarmToneParser::rewind() {
     position = first_note;
     duration = 100;
   }
 
-  bool AlarmToneLanguage::next() {
+  bool AlarmToneParser::next() {
     if(available()) {
       uint8_t sharp;
 
@@ -100,19 +100,19 @@ namespace Alarming {
     return false;
   }
 
-  bool AlarmToneLanguage::isRest() const {
+  bool AlarmToneParser::isRest() const {
     return note == NOTE_P;
   }
 
-  uint32_t AlarmToneLanguage::getNote() const {
+  uint32_t AlarmToneParser::getNote() const {
     return note * pow(2, octave - min_octave);
   }
 
-  uint32_t AlarmToneLanguage::getDuration() const {
+  uint32_t AlarmToneParser::getDuration() const {
     return duration;
   }
 
-  size_t AlarmToneLanguage::printTo(Print &p) const {
+  size_t AlarmToneParser::printTo(Print &p) const {
     size_t length = 0;
     String _note;
 

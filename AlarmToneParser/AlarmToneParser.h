@@ -6,7 +6,7 @@
 #include "StringStream.h"
 
 namespace Alarming {
-  class AlarmToneLanguage : private StringStream, public Printable {
+  class AlarmToneParser : private StringStream, public Printable {
     const uint8_t min_octave = 3;
 
     enum {
@@ -32,8 +32,8 @@ namespace Alarming {
 
     String name;
   public:
-    AlarmToneLanguage(const String&);
-    ~AlarmToneLanguage();
+    AlarmToneParser(const String&);
+    ~AlarmToneParser();
 
     void initialize();
     void rewind();
