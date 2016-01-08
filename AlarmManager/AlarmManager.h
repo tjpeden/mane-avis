@@ -6,8 +6,7 @@
 #include "StringStream.h"
 #include "LinkedList.h"
 
-class AlarmManager : public Printable {
-public:
+namespace Alarming {
   enum Element {
     MINUTE,
     HOUR,
@@ -18,31 +17,37 @@ public:
     LAST // internal use
   };
 
-  AlarmManager();
-  ~AlarmManager();
+  typedef uint16_t value_t;
 
-  bool check();
+  typedef void (*ValueForHandler)(Element, value_t*);
 
-  bool add(String);
-  bool remove(String);
-  bool clear();
+  class AlarmManager : public Printable {
+  public:
+    AlarmManager();
+    ~AlarmManager();
 
-  static void valueForCallback(void (*valueFor)(AlarmManager::Element,  uint16_t*)) {
-    valueFor = valueFor;
+    bool check();
+
+    bool add(String);
+    bool remove(String);
+    bool clear();
+
+    static void valueForCallback(ValueForHandler handler) {
+      valueFor = handler;
+    };
+
+    virtual size_t printTo(Print&) const;
+
+  private:
+    LinkedList<String> *alarms;
+
+    // uint8_t read(int);
+    // void write(int, uint8_t);
+
+    bool matchElement(String, Element);
+
+    static ValueForHandler valueFor;
   };
-
-  virtual size_t printTo(Print&) const;
-
-private:
-  LinkedList<String> *alarms;
-
-  // uint8_t read(int);
-  // void write(int, uint8_t);
-
-  // int valueFor(int);
-  bool matchElement(String, AlarmManager::Element);
-
-  static void (*valueFor)(AlarmManager::Element, uint16_t*);
-};
+}
 
 #endif // _ALARM_MANAGER_H

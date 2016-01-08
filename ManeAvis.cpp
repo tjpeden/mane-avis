@@ -42,6 +42,8 @@ SYSTEM_THREAD(ENABLED);
 
 #define STORE "alarms.txt"
 
+using namespace Alarming;
+
 void enterStart();
 void updateStart();
 void exitStart();
@@ -63,7 +65,7 @@ void renderError();
 int handleAlarm(String);
 void drawIcon(uint16_t, uint16_t, uint16_t, uint16_t, uint16_t, uint16_t);
 void error(String);
-void valueFor(AlarmManager::Element, uint16_t*);
+void valueFor(Element, value_t*);
 void dateTime(uint16_t*, uint16_t*);
 
 Adafruit_SSD1351 Display(OLED_CS, OLED_DC, OLED_RESET);
@@ -485,14 +487,14 @@ void error(String message) {
   self.transitionTo(Error);
 }
 
-void valueFor(AlarmManager::Element element, uint16_t* value) {
+void valueFor(Element element, value_t* value) {
   switch(element) {
-    case AlarmManager::Element::MINUTE : *value = Time.minute();
-    case AlarmManager::Element::HOUR   : *value = Time.hour();
-    case AlarmManager::Element::DAY    : *value = Time.day();
-    case AlarmManager::Element::MONTH  : *value = Time.month();
-    case AlarmManager::Element::WEEKDAY: *value = Time.weekday();
-    case AlarmManager::Element::YEAR   : *value = Time.year();
+    case Element::MINUTE : *value = Time.minute();
+    case Element::HOUR   : *value = Time.hour();
+    case Element::DAY    : *value = Time.day();
+    case Element::MONTH  : *value = Time.month();
+    case Element::WEEKDAY: *value = Time.weekday();
+    case Element::YEAR   : *value = Time.year();
   }
 }
 
