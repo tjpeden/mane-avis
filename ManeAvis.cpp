@@ -106,6 +106,7 @@ uint8_t previousMinute;
 volatile bool clear = true;
 
 void setup() {
+  pinMode(D7, OUTPUT);
   pinMode(SPEAKER, OUTPUT);
   pinMode(BUTTON, INPUT);
 
@@ -155,6 +156,7 @@ void enterStart() {
 
   // Read alarms from SD card
   if(sd.exists(STORE)) {
+    digitalWrite(D7, HIGH);
     if(!store.open(STORE, O_READ)) {
       error("Failed to open store");
       return;
@@ -168,6 +170,7 @@ void enterStart() {
   }
 
   store.close();
+  digitalWrite(D7, LOW);
 }
 
 void updateStart() {
@@ -413,6 +416,7 @@ int handleAlarm(String value) {
   }
 
   if(true == result) {
+    digitalWrite(D7, HIGH);
     store.open(STORE, O_WRITE | O_CREAT | O_TRUNC);
     if(!store) {
       error("Failed to update store");
@@ -422,6 +426,7 @@ int handleAlarm(String value) {
     }
     store.print(alarms);
     store.close();
+    digitalWrite(D7, LOW);
 
     delay(50);
   }
