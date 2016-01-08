@@ -8,7 +8,7 @@
 
 #include "BlynkSimpleParticle.h"
 #include "FiniteStateMachine.h"
-#include "AlarmToneLanguage.h"
+#include "AlarmToneParser.h"
 #include "AlarmManager.h"
 #include "ClickButton.h"
 #include "Runtime.h"
@@ -97,7 +97,7 @@ File store;
 
 WidgetTerminal terminal(V0);
 
-AlarmToneLanguage *parser;
+AlarmToneParser *parser;
 
 uint32_t frameTime = 0;
 
@@ -212,7 +212,7 @@ void enterAlarm() {
   RGB.color(0, 0, 255);
   RGB.brightness(255);
 
-  parser = new AlarmToneLanguage(song);
+  parser = new AlarmToneParser(song);
   parser->initialize();
 
   player.reset();
