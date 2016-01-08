@@ -1,6 +1,8 @@
 #define MANE_AVIS_VERSION "0.0.1"
 
-#include <math.h>
+// #include <math.h>
+
+#include "application.h"
 
 #include "Adafruit_SSD1351.h"
 
@@ -40,6 +42,30 @@ SYSTEM_THREAD(ENABLED);
 
 #define STORE "alarms.txt"
 
+void enterStart();
+void updateStart();
+void exitStart();
+void enterAlarm();
+void updateAlarm();
+void exitAlarm();
+void enterSnuze();
+void updateSnuze();
+void exitSnuze();
+void enterError();
+void updateError();
+void updateClock();
+void play();
+void render();
+void sync();
+void renderStatus();
+void renderClock();
+void renderError();
+int handleAlarm(String);
+void drawIcon(uint16_t, uint16_t, uint16_t, uint16_t, uint16_t, uint16_t);
+void error(String);
+void valueFor(AlarmManager::Element, uint16_t*);
+void dateTime(uint16_t*, uint16_t*);
+
 Adafruit_SSD1351 Display(OLED_CS, OLED_DC, OLED_RESET);
 
 AlarmManager alarms = AlarmManager();
@@ -71,8 +97,6 @@ WidgetTerminal terminal(V0);
 
 AlarmToneLanguage *parser;
 
-int32_t rssi = 0;
-uint32_t freeMemory = 0;
 uint32_t frameTime = 0;
 
 uint32_t clicks = 0;
@@ -99,6 +123,8 @@ void setup() {
     return;
   }
   SdFile::dateTimeCallback(dateTime);
+
+  AlarmManager::valueForCallback(valueFor);
 
   Particle.function("alarm", handleAlarm);
 }
@@ -443,14 +469,26 @@ void drawIcon(uint16_t x, uint16_t y, uint16_t size, uint16_t signalStrength, ui
 }
 
 void error(String message) {
-  errorMessage = message;
   if(self.isInState(Start)) {
     sd.initErrorPrint(&terminal);
   } else {
     sd.errorPrint(&terminal);
   }
   terminal.flush();
+
+  errorMessage = message;
   self.transitionTo(Error);
+}
+
+void valueFor(AlarmManager::Element element, uint16_t* value) {
+  switch(element) {
+    case AlarmManager::Element::MINUTE : *value = Time.minute();
+    case AlarmManager::Element::HOUR   : *value = Time.hour();
+    case AlarmManager::Element::DAY    : *value = Time.day();
+    case AlarmManager::Element::MONTH  : *value = Time.month();
+    case AlarmManager::Element::WEEKDAY: *value = Time.weekday();
+    case AlarmManager::Element::YEAR   : *value = Time.year();
+  }
 }
 
 void dateTime(uint16_t* date, uint16_t* time) {
