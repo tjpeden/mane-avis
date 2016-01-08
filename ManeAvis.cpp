@@ -171,7 +171,7 @@ void enterStart() {
 }
 
 void updateStart() {
-  if(10000 < Time.now()) { // time sync check per @bko
+  if(10000 < Time.now() && 5000 < millis()) { // time sync check per @bko
     self.transitionTo(Clock);
 
     return;
