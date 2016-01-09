@@ -82,7 +82,7 @@ FSM self = FSM(Start);
 
 ClickButton button(BUTTON, HIGH);
 
-Timer player(1, play);       // Play alarm tone
+// Timer player(1, play);       // Play alarm tone
 Timer renderer(200, render); // Render screen
 Timer syncer(1000, sync);   // Update Particle Cloud variables
 
@@ -97,7 +97,7 @@ File store;
 
 WidgetTerminal terminal(V0);
 
-AlarmToneParser *parser;
+// AlarmToneParser *parser;
 
 uint32_t frameTime = 0;
 
@@ -176,7 +176,7 @@ void enterStart() {
 }
 
 void updateStart() {
-  if(10000 < Time.now() && 5000 < millis()) { // time sync check per @bko
+  if(Time.now() > 10000 && millis() > 5000) {
     self.transitionTo(Clock);
 
     return;
@@ -212,10 +212,10 @@ void enterAlarm() {
   RGB.color(0, 0, 255);
   RGB.brightness(255);
 
-  parser = new AlarmToneParser(song);
-  parser->initialize();
+  // parser = new AlarmToneParser(song);
+  // parser->initialize();
 
-  player.reset();
+  // player.reset();
 }
 
 void updateAlarm() {
@@ -234,13 +234,13 @@ void updateAlarm() {
 }
 
 void exitAlarm() {
-  player.stop();
+  // player.stop();
   noTone(SPEAKER);
 
   RGB.color(0, 0, 0);
   RGB.brightness(0);
 
-  delete parser;
+  // delete parser;
 
   Particle.publish("alarm:end");
 }
@@ -383,15 +383,15 @@ void sync() {
   if(0 == Time.hour() && 0 == Time.minute()) Particle.syncTime();
 }
 
-void play() {
-  if(playerRuntime.check(parser->getDuration())) {
-    if(parser->next()) {
-      parser->isRest() ? noTone(SPEAKER) : tone(SPEAKER, parser->getNote(), parser->getDuration());
-    } else {
-      parser->rewind();
-    }
-  }
-}
+// void play() {
+//   if(playerRuntime.check(parser->getDuration())) {
+//     if(parser->next()) {
+//       parser->isRest() ? noTone(SPEAKER) : tone(SPEAKER, parser->getNote(), parser->getDuration());
+//     } else {
+//       parser->rewind();
+//     }
+//   }
+// }
 
 int handleAlarm(String value) {
   bool result = false;
@@ -488,13 +488,46 @@ void error(String message) {
 }
 
 void valueFor(Element element, value_t* value) {
+  Serial.print("valueFor: ");
   switch(element) {
-    case Element::MINUTE : *value = Time.minute();
-    case Element::HOUR   : *value = Time.hour();
-    case Element::DAY    : *value = Time.day();
-    case Element::MONTH  : *value = Time.month();
-    case Element::WEEKDAY: *value = Time.weekday();
-    case Element::YEAR   : *value = Time.year();
+    case Element::MINUTE:
+      Serial.println("MINUTE");
+      break;
+    case Element::HOUR:
+      Serial.println("HOUR");
+      break;
+    case Element::DAY:
+      Serial.println("DAY");
+      break;
+    case Element::MONTH:
+      Serial.println("MONTH");
+      break;
+    case Element::WEEKDAY:
+      Serial.println("WEEKDAY");
+      break;
+    case Element::YEAR:
+      Serial.println("YEAR");
+      break;
+  }
+  switch(element) {
+    case Element::MINUTE:
+      *value = Time.minute();
+      break;
+    case Element::HOUR:
+      *value = Time.hour();
+      break;
+    case Element::DAY:
+      *value = Time.day();
+      break;
+    case Element::MONTH:
+      *value = Time.month();
+      break;
+    case Element::WEEKDAY:
+      *value = Time.weekday();
+      break;
+    case Element::YEAR:
+      *value = Time.year();
+      break;
   }
 }
 
