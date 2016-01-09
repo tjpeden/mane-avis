@@ -33,33 +33,33 @@ namespace Alarming {
     delete alarms;
   }
 
-  bool AlarmManager::matchElement(String value, Element element) {
-    if(value == "") {
+  bool AlarmManager::matchElement(String target, Element element) {
+    if(target == "") {
       if(element == YEAR) return true;
       else return false;
     }
-    if(value == "*") return true;
+    if(target == "*") return true;
 
-    if((element == DAY || element == WEEKDAY) && value == "?") return true;
+    if((element == DAY || element == WEEKDAY) && target == "?") return true;
 
     value_t current;
     valueFor(element, &current);
 
-    if(value.indexOf(',') >= 0) {
-      StringStream valueStream = StringStream(value);
-      String part = valueStream.readStringUntil(',');
+    if(target.indexOf(',') >= 0) {
+      StringStream targetStream = StringStream(target);
+      String part = targetStream.readStringUntil(',');
 
       while(part != "") {
         if(matchElement(part, element)) return true;
-        part = valueStream.readStringUntil(',');
+        part = targetStream.readStringUntil(',');
       }
 
       return false;
     }
 
-    if(value.indexOf('/') >= 0) {
-      value_t start    = value.substring(0, value.indexOf('/')).toInt();
-      value_t interval = value.substring(value.indexOf('/') + 1).toInt();
+    if(target.indexOf('/') >= 0) {
+      value_t start    = target.substring(0, target.indexOf('/')).toInt();
+      value_t interval = target.substring(target.indexOf('/') + 1).toInt();
 
       start = constrain(start, ranges[(int)element][0], ranges[(int)element][1]);
 
@@ -70,9 +70,9 @@ namespace Alarming {
       return false;
     }
 
-    if(value.indexOf('-') >= 0) {
-      value_t start = value.substring(0, value.indexOf('-')).toInt();
-      value_t end   = value.substring(value.indexOf('-') + 1).toInt();
+    if(target.indexOf('-') >= 0) {
+      value_t start = target.substring(0, target.indexOf('-')).toInt();
+      value_t end   = target.substring(target.indexOf('-') + 1).toInt();
 
       start = constrain(start, ranges[(int)element][0], ranges[(int)element][1]);
       end   = constrain(end, ranges[(int)element][0], ranges[(int)element][1]);
@@ -82,7 +82,7 @@ namespace Alarming {
       return false;
     }
 
-    return constrain(value.toInt(), ranges[(int)element][0], ranges[(int)element][1]) == current;
+    return constrain(target.toInt(), ranges[(int)element][0], ranges[(int)element][1]) == current;
   }
 
   bool AlarmManager::check() {
@@ -91,9 +91,9 @@ namespace Alarming {
       StringStream alarm = StringStream(alarms->get(i));
 
       for(element = MINUTE; element != LAST; element++) {
-        String value = alarm.readStringUntil(' ');
+        String target = alarm.readStringUntil(' ');
 
-        if(!matchElement(value, element)) break;
+        if(!matchElement(target, element)) break;
       }
 
       if(element == LAST) return true;
